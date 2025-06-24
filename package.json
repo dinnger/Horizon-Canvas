@@ -1,0 +1,15 @@
+{
+  "name": "canvas",
+  "version": "1.0.0",
+  "description": "Canvas del cliente",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fontsource-variable/comfortaa": "^5.2.6",
+    "uuid": "^11.1.0"
+  }
+}

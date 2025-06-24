@@ -1,95 +1,113 @@
-import type { ICommunicationTypes } from './interfaz/connect.interface.js'
-import type { INodeCanvas, INodeConnections } from './interfaz/node.interface.js'
+import "./style/style.css";
+import "@fontsource-variable/comfortaa";
+import type { ICommunicationTypes } from "./interfaz/connect.interface.js";
+import type {
+	INodeCanvas,
+	INodeConnections,
+} from "./interfaz/node.interface.js";
 import {
 	drawNodeConnectionPreview,
 	renderSelected,
 	getTempConnection,
 	subscriberHelper,
 	setIndexTime,
-	renderAnimation
-} from './canvasHelpers'
-import { pattern_dark, pattern_light } from './canvasPattern'
-import { v4 as uuidv4 } from 'uuid'
-import { Nodes, type ICanvasNodeNew } from './canvasNodes'
+	renderAnimation,
+} from "./canvasHelpers";
+import { pattern_dark, pattern_light } from "./canvasPattern";
+import { v4 as uuidv4 } from "uuid";
+import { Nodes, type ICanvasNodeNew } from "./canvasNodes";
 
 export interface ILog {
-	logs?: object
+	logs?: object;
 }
 
 type EventsCanvas =
-	| 'node_context'
-	| 'node_selected'
-	| 'node_deselected'
-	| 'node_moved'
-	| 'node_added'
-	| 'node_removed'
-	| 'node_connection_selected'
-	| 'clear'
+	| "node_context"
+	| "node_selected"
+	| "node_deselected"
+	| "node_moved"
+	| "node_added"
+	| "node_removed"
+	| "node_connection_selected"
+	| "mouse_move"
+	| "zoom"
+	| "clear";
 
 /**
  * Clase principal que maneja el canvas de flujo de trabajo.
  * Gestiona la renderización, eventos, y operaciones de nodos y conexiones.
  */
 export class Canvas {
-	canvas: HTMLCanvasElement
-	context: CanvasRenderingContext2D
-	ctx: CanvasRenderingContext2D
-	canvasTranslate: { x: number; y: number } = { x: 0, y: 0 }
-	canvasTempPosX = 0
-	canvasTempPosY = 0
-	canvasWidth = 0
-	canvasHeight = 0
-	canvasFactor = 1
-	canvasPattern: CanvasPattern | undefined
-	canvasRelativePos: INodeCanvas['design'] = { x: 0, y: 0 }
-	canvasPosition: INodeCanvas['design'] = { x: 0, y: 0 }
-	canvasGrid = 40
+	canvas: HTMLCanvasElement;
+	context: CanvasRenderingContext2D;
+	ctx: CanvasRenderingContext2D;
+	canvasTranslate: { x: number; y: number } = { x: 0, y: 0 };
+	canvasTempPosX = 0;
+	canvasTempPosY = 0;
+	canvasWidth = 0;
+	canvasHeight = 0;
+	canvasFactor = 1;
+	canvasPattern: CanvasPattern | undefined;
+	canvasRelativePos: INodeCanvas["design"] = { x: 0, y: 0 };
+	canvasPosition: INodeCanvas["design"] = { x: 0, y: 0 };
+	canvasGrid = 40;
 	canvasSelect: {
-		x1: number
-		y1: number
-		x2: number
-		y2: number
-		show: boolean
-	} = { x1: 0, y1: 0, x2: 0, y2: 0, show: false }
+		x1: number;
+		y1: number;
+		x2: number;
+		y2: number;
+		show: boolean;
+	} = { x1: 0, y1: 0, x2: 0, y2: 0, show: false };
 
 	// setInterval
-	backgroundUpdateInterval: ReturnType<typeof setInterval> | null = null
-	canvasFps: number = 1000 / 40
-	indexTime = 0
-	theme: string
+	backgroundUpdateInterval: ReturnType<typeof setInterval> | null = null;
+	canvasFps: number = 1000 / 40;
+	indexTime = 0;
+	theme: string;
 
-	nodes: Nodes
+	nodes: Nodes;
 
-	selectedNode: ICanvasNodeNew[] = []
+	selectedNode: ICanvasNodeNew[] = [];
 	newConnectionNode: {
-		node: INodeCanvas
-		type: 'input' | 'output' | 'callback'
-		index: number
-		value: any
-		relative?: { x: number; y: number }
-	} | null = null
+		node: INodeCanvas;
+		type: "input" | "output" | "callback";
+		index: number;
+		value: any;
+		relative?: { x: number; y: number };
+	} | null = null;
 
-	isNodeConnectionVisible = false
+	isNodeConnectionVisible = false;
 
-	eventsCanvas = ['mousedown', 'mouseup', 'mousemove', 'wheel', 'dblclick', 'contextmenu']
-	eventsType: 'cursor' | 'move' = 'cursor'
+	eventsCanvas = [
+		"mousedown",
+		"mouseup",
+		"mousemove",
+		"wheel",
+		"dblclick",
+		"contextmenu",
+	];
+	eventsType: "cursor" | "move" = "cursor";
 
-	isDragging = false
+	isDragging = false;
 
-	subscribers = new Map<EventsCanvas | EventsCanvas[], (e: any) => any>()
+	subscribers = new Map<EventsCanvas | EventsCanvas[], (e: any) => any>();
 
 	constructor({
 		canvas,
-		theme
+		theme,
 	}: {
-		canvas: HTMLCanvasElement
-		theme: string
+		canvas: HTMLCanvasElement;
+		theme: string;
 	}) {
-		this.canvas = canvas
-		this.context = canvas.getContext('2d') as CanvasRenderingContext2D
-		this.ctx = this.context
-		this.nodes = new Nodes({ canvasTranslate: this.canvasTranslate, ctx: this.ctx })
-		this.theme = theme
+		this.canvas = canvas;
+		this.context = canvas.getContext("2d") as CanvasRenderingContext2D;
+		this.ctx = this.context;
+		this.nodes = new Nodes({
+			canvasTranslate: this.canvasTranslate,
+			ctx: this.ctx,
+		});
+		this.theme = theme;
+		this.init();
 	}
 
 	/**
@@ -97,32 +115,37 @@ export class Canvas {
 	 * @param nodes - Nodos iniciales a cargar
 	 * @param connections - Conexiones iniciales a establecer
 	 */
-	init({ nodes, connections }: { nodes?: { [key: string]: INodeCanvas }; connections?: INodeConnections[] }) {
-		this.eventResize()
+	init() {
+		this.eventResize();
 		for (const event of this.eventsCanvas) {
 			this.canvas.addEventListener(event as any, (e) => {
-				e.preventDefault()
-				this.events({ event: event as string, e })
-			})
+				e.preventDefault();
+				e.stopPropagation();
+				this.events({ event: event as string, e });
+			});
 		}
-		window.addEventListener('resize', () => this.eventResize())
-		document.addEventListener('mouseup', this.eventMouseUp)
+		window.addEventListener("resize", () => this.eventResize());
+		document.addEventListener("mouseup", this.eventMouseUp);
 
-		this.addImageProcess(this.theme === 'dark' ? pattern_dark : pattern_light).then((img) => {
-			this.canvasPattern = this.ctx.createPattern(img, 'repeat') as CanvasPattern
-			if (nodes && connections) this.load({ nodes, connections })
-			this.background()
+		this.addImageProcess(
+			this.theme === "light" ? pattern_light : pattern_dark,
+		).then((img) => {
+			this.canvasPattern = this.ctx.createPattern(
+				img,
+				"repeat",
+			) as CanvasPattern;
+			this.background();
 			if (this.backgroundUpdateInterval) {
-				clearInterval(this.backgroundUpdateInterval)
+				clearInterval(this.backgroundUpdateInterval);
 			}
 
 			this.backgroundUpdateInterval = setInterval(() => {
-				this.indexTime++
-				setIndexTime(this.indexTime)
-				if (this.indexTime > 100) this.indexTime = 0
-				this.background()
-			}, this.canvasFps)
-		})
+				this.indexTime++;
+				setIndexTime(this.indexTime);
+				if (this.indexTime > 100) this.indexTime = 0;
+				this.background();
+			}, this.canvasFps);
+		});
 	}
 
 	/**
@@ -130,12 +153,18 @@ export class Canvas {
 	 * @param nodes - Diccionario de nodos indexados por ID
 	 * @param connections - Array de conexiones entre nodos
 	 */
-	private load({ nodes, connections }: { nodes: { [key: string]: INodeCanvas }; connections: INodeConnections[] }) {
+	private load({
+		nodes,
+		connections,
+	}: {
+		nodes: { [key: string]: INodeCanvas };
+		connections: INodeConnections[];
+	}) {
 		for (const [key, node] of Object.entries(nodes)) {
-			this.nodes.addNode({ ...node, id: key })
+			this.nodes.addNode({ ...node, id: key });
 		}
 		for (const connection of connections) {
-			this.nodes.addConnection(connection)
+			this.nodes.addConnection(connection);
 		}
 	}
 
@@ -145,12 +174,12 @@ export class Canvas {
 	 * @param e - Datos del evento
 	 */
 	private emit = (event: EventsCanvas | EventsCanvas[], e: any) => {
-		const events = !Array.isArray(event) ? [event] : event
+		const events = !Array.isArray(event) ? [event] : event;
 		for (const event of events) {
-			const callback = this.subscribers.get(event)
-			if (callback) callback(e)
+			const callback = this.subscribers.get(event);
+			if (callback) callback(e);
 		}
-	}
+	};
 
 	/**
 	 * Carga una imagen de forma asíncrona.
@@ -159,60 +188,64 @@ export class Canvas {
 	 */
 	private addImageProcess(src: string): Promise<HTMLImageElement> {
 		return new Promise((resolve, reject) => {
-			const img = new Image()
-			img.onload = () => resolve(img)
-			img.onerror = reject
-			img.src = src
-		})
+			const img = new Image();
+			img.onload = () => resolve(img);
+			img.onerror = reject;
+			img.src = src;
+		});
 	}
 
 	/**
 	 * Renderiza el fondo del canvas y todos los elementos visuales.
 	 */
 	private background() {
-		if (!this.canvas || !this.ctx || !this.canvasPattern) return
-		const x = this.canvasTranslate.x
-		const y = this.canvasTranslate.y
-		const x_ = -x / this.canvasFactor
-		const y_ = -y / this.canvasFactor
-		const w_ = this.canvasWidth / this.canvasFactor
-		const h_ = this.canvasHeight / this.canvasFactor
+		if (!this.canvas || !this.ctx || !this.canvasPattern) return;
+		const x = this.canvasTranslate.x;
+		const y = this.canvasTranslate.y;
+		const x_ = -x / this.canvasFactor;
+		const y_ = -y / this.canvasFactor;
+		const w_ = this.canvasWidth / this.canvasFactor;
+		const h_ = this.canvasHeight / this.canvasFactor;
 
-		this.ctx.clearRect(x_, y_, w_, h_)
-		this.ctx.save()
-		this.ctx.translate(x, y)
-		this.ctx.scale(this.canvasFactor, this.canvasFactor)
-		this.ctx.clearRect(x_, y_, w_, h_)
-		this.ctx.fillStyle = this.canvasPattern
-		this.ctx.fillRect(x_, y_, w_, h_)
-		this.ctx.globalAlpha = 1.0
-		this.ctx.imageSmoothingEnabled = this.ctx.imageSmoothingEnabled = true
+		this.ctx.clearRect(x_, y_, w_, h_);
+		this.ctx.save();
+		this.ctx.translate(x, y);
+		this.ctx.scale(this.canvasFactor, this.canvasFactor);
+		this.ctx.clearRect(x_, y_, w_, h_);
+		this.ctx.fillStyle = this.canvasPattern;
+		this.ctx.fillRect(x_, y_, w_, h_);
+		this.ctx.globalAlpha = 1.0;
+		this.ctx.imageSmoothingEnabled = this.ctx.imageSmoothingEnabled = true;
 
-		this.nodes.render({ ctx: this.ctx })
+		this.nodes.render({ ctx: this.ctx });
 
 		if (this.canvasSelect.show) {
-			this.nodes.selectedMultiple({ range: this.canvasSelect, relative: this.canvasRelativePos })
+			this.nodes.selectedMultiple({
+				range: this.canvasSelect,
+				relative: this.canvasRelativePos,
+			});
 			renderSelected({
 				canvasSelect: this.canvasSelect,
 				theme: this.theme,
-				ctx: this.ctx
-			})
+				ctx: this.ctx,
+			});
 		}
 
-		renderAnimation({ ctx: this.ctx })
+		renderAnimation({ ctx: this.ctx });
 
 		if (this.newConnectionNode) {
 			drawNodeConnectionPreview({
 				node_connection_new: this.newConnectionNode.node,
 				type: this.newConnectionNode.type,
 				index: this.newConnectionNode.index,
-				canvasRelativePos: this.newConnectionNode.relative || this.canvasRelativePos,
+				canvasRelativePos:
+					this.newConnectionNode.relative || this.canvasRelativePos,
 				nodes: this.nodes.getNodes(),
-				ctx: this.ctx
-			})
+				ctx: this.ctx,
+			});
 		}
 
-		this.ctx.restore()
+		this.ctx.restore();
 	}
 
 	/**
@@ -220,15 +253,18 @@ export class Canvas {
 	 * @param event - Tipo de evento o array de tipos
 	 * @param callback - Función a ejecutar cuando ocurra el evento
 	 */
-	listener = (event: EventsCanvas | EventsCanvas[], callback: (e: any) => any) => {
+	subscriber = (
+		event: EventsCanvas | EventsCanvas[],
+		callback: (e: any) => any,
+	) => {
 		if (Array.isArray(event)) {
 			for (const e of event) {
-				this.listener(e, callback)
+				this.subscriber(e, callback);
 			}
-			return
+			return;
 		}
-		this.subscribers.set(event, callback)
-	}
+		this.subscribers.set(event, callback);
+	};
 
 	/**
 	 * Dispatcher principal de eventos del canvas.
@@ -237,24 +273,24 @@ export class Canvas {
 	 */
 	private events({ event, e }: { event: string; e: any }) {
 		switch (event) {
-			case 'mousedown':
-				this.eventMouseDown(e)
-				break
-			case 'mouseup':
-				this.eventMouseUp(e)
-				break
-			case 'mousemove':
-				this.eventMouseMove(e)
-				break
-			case 'wheel':
-				this.eventWheel(e)
-				break
-			case 'dblclick':
-				this.eventDbClick(e)
-				break
-			case 'contextmenu':
-				this.eventContextMenu(e)
-				break
+			case "mousedown":
+				this.eventMouseDown(e);
+				break;
+			case "mouseup":
+				this.eventMouseUp(e);
+				break;
+			case "mousemove":
+				this.eventMouseMove(e);
+				break;
+			case "wheel":
+				this.eventWheel(e);
+				break;
+			case "dblclick":
+				this.eventDbClick(e);
+				break;
+			case "contextmenu":
+				this.eventContextMenu(e);
+				break;
 		}
 	}
 
@@ -263,91 +299,98 @@ export class Canvas {
 	 * @param e - Evento del mouse
 	 */
 	private eventMouseDown = (e: MouseEvent) => {
-		this.canvasTempPosX = e.clientX - this.canvasTranslate.x
-		this.canvasTempPosY = e.clientY - this.canvasTranslate.y
+		this.canvasTempPosX = e.clientX - this.canvasTranslate.x;
+		this.canvasTempPosY = e.clientY - this.canvasTranslate.y;
 		if (e.button === 0 || e.button === 2) {
-			this.newConnectionNode = this.nodes.selected({ relative: this.canvasRelativePos })
-			this.selectedNode = this.nodes.getSelected()
-			this.isDragging = true
+			this.newConnectionNode = this.nodes.selected({
+				relative: this.canvasRelativePos,
+			});
+			this.selectedNode = this.nodes.getSelected();
+			this.isDragging = true;
 
 			if (this.selectedNode.length === 0) {
-				this.emit('node_selected', null)
+				this.emit("node_selected", null);
 			}
 			if (!this.newConnectionNode) {
-				this.emit('node_connection_selected', null)
+				this.emit("node_connection_selected", null);
 			}
 			if (this.selectedNode.length === 0 && !this.newConnectionNode) {
-				this.isNodeConnectionVisible = false
-				this.emit('clear', null)
+				this.isNodeConnectionVisible = false;
+				this.emit("clear", null);
 			}
 		}
 
 		if (e.button === 1) {
-			this.eventMouseUp(e)
-			this.eventsType = 'move'
+			this.eventMouseUp(e);
+			this.eventsType = "move";
 		}
-	}
+	};
 
 	/**
 	 * Maneja el evento de mouse up para finalizar arrastre.
 	 * @param e - Evento del mouse
 	 */
 	private eventMouseUp = (e: MouseEvent) => {
-		this.isDragging = false
-		if (e.button === 1) this.eventsType = 'cursor'
-		if (e.button === 0) this.eventMouseEnd()
-	}
+		this.isDragging = false;
+		if (e.button === 1) this.eventsType = "cursor";
+		if (e.button === 0) this.eventMouseEnd();
+	};
 
 	/**
 	 * Maneja el movimiento del mouse para arrastre y selección múltiple.
 	 * @param e - Evento del mouse
 	 */
 	private eventMouseMove = (e: MouseEvent) => {
-		const { offsetX: x, offsetY: y } = e
-		this.canvasPosition = { x, y }
+		const { offsetX: x, offsetY: y } = e;
+		this.canvasPosition = { x, y };
 		this.canvasRelativePos = {
-			x: Number.parseFloat(((x - this.canvasTranslate.x) / this.canvasFactor).toFixed(2)),
-			y: Number.parseFloat(((y - this.canvasTranslate.y) / this.canvasFactor).toFixed(2))
-		}
-		if (this.eventsType === 'cursor' && e.buttons === 1 && this.isDragging) {
+			x: Number.parseFloat(
+				((x - this.canvasTranslate.x) / this.canvasFactor).toFixed(2),
+			),
+			y: Number.parseFloat(
+				((y - this.canvasTranslate.y) / this.canvasFactor).toFixed(2),
+			),
+		};
+		this.emit("mouse_move", this.canvasRelativePos);
+		if (this.eventsType === "cursor" && e.buttons === 1 && this.isDragging) {
 			if (this.selectedNode.length === 0 || this.canvasSelect.show) {
 				if (!this.canvasSelect.show) {
-					this.canvasSelect.x1 = this.canvasRelativePos.x
-					this.canvasSelect.y1 = this.canvasRelativePos.y
+					this.canvasSelect.x1 = this.canvasRelativePos.x;
+					this.canvasSelect.y1 = this.canvasRelativePos.y;
 				}
-				this.canvasSelect.x2 = this.canvasRelativePos.x
-				this.canvasSelect.y2 = this.canvasRelativePos.y
-				this.canvasSelect.show = true
-				return
+				this.canvasSelect.x2 = this.canvasRelativePos.x;
+				this.canvasSelect.y2 = this.canvasRelativePos.y;
+				this.canvasSelect.show = true;
+				return;
 			}
 			if (this.selectedNode.length > 0 && !this.newConnectionNode) {
-				this.nodes.move({ relative: this.canvasRelativePos })
-				this.emit('node_moved', { selected: this.selectedNode })
+				this.nodes.move({ relative: this.canvasRelativePos });
+				this.emit("node_moved", { selected: this.selectedNode });
 			}
 		}
-		if ((this.eventsType === 'move' && e.buttons === 1) || e.buttons === 4) {
-			if (e.buttons === 4) this.eventsType = 'move'
-			this.canvasTranslate.x = e.clientX - this.canvasTempPosX
-			this.canvasTranslate.y = e.clientY - this.canvasTempPosY
+		if ((this.eventsType === "move" && e.buttons === 1) || e.buttons === 4) {
+			if (e.buttons === 4) this.eventsType = "move";
+			this.canvasTranslate.x = e.clientX - this.canvasTempPosX;
+			this.canvasTranslate.y = e.clientY - this.canvasTempPosY;
 		}
-	}
+	};
 
 	/**
 	 * Maneja el doble click para seleccionar nodos.
 	 * @param _e - Evento del mouse
 	 */
 	private eventDbClick = (_e: MouseEvent) => {
-		const selected = this.nodes.getSelected()
-		this.emit('node_selected', { selected })
-	}
+		const selected = this.nodes.getSelected();
+		this.emit("node_selected", { selected });
+	};
 
 	/**
 	 * Maneja el evento de rueda del mouse para zoom.
 	 * @param e - Evento de rueda
 	 */
 	private eventWheel = (e: WheelEvent) => {
-		this.eventScrollZoom({ deltaY: e.deltaY })
-	}
+		this.eventScrollZoom({ deltaY: e.deltaY });
+	};
 
 	/**
 	 * Maneja el menú contextual del canvas.
@@ -356,61 +399,70 @@ export class Canvas {
 	private eventContextMenu = (_e: MouseEvent) => {
 		const connectionAtPosition = this.nodes.getConnectionAtPosition({
 			x: this.canvasRelativePos.x,
-			y: this.canvasRelativePos.y
-		})
+			y: this.canvasRelativePos.y,
+		});
 
 		if (connectionAtPosition) {
-			this.emit('node_connection_selected', {
+			this.emit("node_connection_selected", {
 				id: connectionAtPosition.connection.id!,
 				nodeOrigin: connectionAtPosition.nodeOrigin.get(),
 				nodeDestiny: connectionAtPosition.nodeDestiny.get(),
 				input: connectionAtPosition.connection.connectorDestinyName,
-				output: connectionAtPosition.connection.connectorName
-			})
-			return
+				output: connectionAtPosition.connection.connectorName,
+			});
+			return;
 		}
 
-		const selected = this.nodes.getSelected()
-		if (selected.length === 0) return
-		this.emit('node_context', { selected, canvasTranslate: this.nodes.canvasTranslate })
-	}
+		const selected = this.nodes.getSelected();
+		if (selected.length === 0) return;
+		this.emit("node_context", {
+			selected,
+			canvasTranslate: this.nodes.canvasTranslate,
+		});
+	};
 
 	/**
 	 * Finaliza operaciones de arrastre y crea conexiones automáticas.
 	 */
 	private eventMouseEnd() {
-		this.canvasSelect.show = false
+		this.canvasSelect.show = false;
 
 		if (this.newConnectionNode && !getTempConnection()) {
 			const targetInput = this.nodes.getInputAtPosition({
 				x: this.canvasRelativePos.x,
-				y: this.canvasRelativePos.y
-			})
+				y: this.canvasRelativePos.y,
+			});
 
-			if (targetInput && this.newConnectionNode.type === 'output' && targetInput.node.id !== this.newConnectionNode.node.id) {
-				const originNode = this.nodes.getNode({ id: this.newConnectionNode.node.id! })
+			if (
+				targetInput &&
+				this.newConnectionNode.type === "output" &&
+				targetInput.node.id !== this.newConnectionNode.node.id
+			) {
+				const originNode = this.nodes.getNode({
+					id: this.newConnectionNode.node.id!,
+				});
 				originNode.addConnection({
-					connectorType: 'output',
+					connectorType: "output",
 					connectorName: this.newConnectionNode.value,
 					idNodeDestiny: targetInput.node.id!,
-					connectorDestinyType: 'input',
+					connectorDestinyType: "input",
 					connectorDestinyName: targetInput.connectorName,
-					isManual: true
-				})
+					isManual: true,
+				});
 
-				this.newConnectionNode = null
-				this.isNodeConnectionVisible = false
+				this.newConnectionNode = null;
+				this.isNodeConnectionVisible = false;
 			} else {
-				this.emit('node_added', {
+				this.emit("node_added", {
 					design: this.canvasPosition,
-					relative_pos: { ...this.canvasRelativePos },
-					output_index: this.newConnectionNode.index,
-					node: this.newConnectionNode.node
-				})
+					relativePos: { ...this.canvasRelativePos },
+					connection: this.newConnectionNode.value,
+					node: this.newConnectionNode.node,
+				});
 			}
 		}
 		if (this.newConnectionNode) {
-			this.newConnectionNode.relative = this.canvasRelativePos
+			this.newConnectionNode.relative = this.canvasRelativePos;
 		}
 	}
 
@@ -418,12 +470,12 @@ export class Canvas {
 	 * Ajusta el tamaño del canvas al contenedor padre.
 	 */
 	private eventResize() {
-		const parent = this.canvas.parentElement
+		const parent = this.canvas.parentElement;
 		if (parent) {
-			this.canvasWidth = parent.clientWidth
-			this.canvasHeight = parent.clientHeight
-			this.canvas.width = this.canvasWidth
-			this.canvas.height = this.canvasHeight
+			this.canvasWidth = parent.clientWidth;
+			this.canvasHeight = parent.clientHeight;
+			this.canvas.width = this.canvasWidth;
+			this.canvas.height = this.canvasHeight;
 		}
 	}
 
@@ -433,9 +485,10 @@ export class Canvas {
 	 * @param value - Incremento del zoom
 	 */
 	private eventZoom({ zoom, value }: { zoom?: number; value?: number }) {
-		this.canvasFactor = zoom || this.canvasFactor + (value || 0)
-		if (this.canvasFactor < 0.5) this.canvasFactor = 0.5
-		if (this.canvasFactor > 2) this.canvasFactor = 2
+		this.canvasFactor = zoom || this.canvasFactor + (value || 0);
+		if (this.canvasFactor < 0.5) this.canvasFactor = 0.5;
+		if (this.canvasFactor > 2) this.canvasFactor = 2;
+		this.emit("zoom", { zoom: this.canvasFactor.toFixed(1) });
 	}
 
 	/**
@@ -443,10 +496,12 @@ export class Canvas {
 	 * @param deltaY - Dirección del scroll
 	 */
 	private eventScrollZoom({ deltaY }: { deltaY: number }) {
-		const tempFactor = this.canvasFactor
-		this.eventZoom({ value: deltaY > 0 ? -0.1 : 0.1 })
-		this.canvasTranslate.x -= this.canvasRelativePos.x * (this.canvasFactor - tempFactor)
-		this.canvasTranslate.y -= this.canvasRelativePos.y * (this.canvasFactor - tempFactor)
+		const tempFactor = this.canvasFactor;
+		this.eventZoom({ value: deltaY > 0 ? -0.1 : 0.1 });
+		this.canvasTranslate.x -=
+			this.canvasRelativePos.x * (this.canvasFactor - tempFactor);
+		this.canvasTranslate.y -=
+			this.canvasRelativePos.y * (this.canvasFactor - tempFactor);
 	}
 
 	/**
@@ -456,14 +511,14 @@ export class Canvas {
 	 */
 	actionSubscriber(
 		type: ICommunicationTypes | ICommunicationTypes[],
-		fn: ({ event, data }: { event: ICommunicationTypes; data: any }) => void
+		fn: ({ event, data }: { event: ICommunicationTypes; data: any }) => void,
 	) {
 		if (Array.isArray(type)) {
 			for (const t of type) {
-				subscriberHelper().subscriber(t, fn)
+				subscriberHelper().subscriber(t, fn);
 			}
 		} else {
-			subscriberHelper().subscriber(type, fn)
+			subscriberHelper().subscriber(type, fn);
 		}
 	}
 
@@ -471,21 +526,21 @@ export class Canvas {
 	 * Aumenta el zoom del canvas.
 	 */
 	actionZoomIn() {
-		this.eventZoom({ value: 0.1 })
+		this.eventZoom({ value: 0.1 });
 	}
 
 	/**
 	 * Disminuye el zoom del canvas.
 	 */
 	actionZoomOut() {
-		this.eventZoom({ value: -0.1 })
+		this.eventZoom({ value: -0.1 });
 	}
 
 	/**
 	 * Restaura el zoom al 100%.
 	 */
 	actionZoomCenter() {
-		this.eventZoom({ zoom: 1 })
+		this.eventZoom({ zoom: 1 });
 	}
 
 	/**
@@ -498,39 +553,44 @@ export class Canvas {
 	actionAddNode({
 		origin,
 		node,
-		isManual
+		isManual,
 	}: {
-		origin?: { idNode: string; connectorType: 'input' | 'output' | 'callback'; connectorName: string }
-		node: INodeCanvas
-		isManual?: boolean
+		origin?: {
+			idNode: string;
+			connectorType: "input" | "output" | "callback";
+			connectorName: string;
+		};
+		node: INodeCanvas;
+		isManual?: boolean;
 	}) {
-		const id = uuidv4()
-		this.newConnectionNode = null
+		const id = uuidv4();
+		this.newConnectionNode = null;
 		const data: INodeCanvas = {
 			...JSON.parse(JSON.stringify(node)),
 			id: node.id || id,
 			design: {
 				x: Math.round((node.design.x || 0) / this.canvasGrid) * this.canvasGrid,
-				y: Math.round((node.design.y || 0) / this.canvasGrid) * this.canvasGrid
-			}
-		}
-		data.info.name = utilsValidateName({
-			text: node.info.name,
-			nodes: Object.values(this.nodes.getNodes())
-		})
-		const nodeDestiny = this.nodes.addNode(data, isManual)
+				y: Math.round((node.design.y || 0) / this.canvasGrid) * this.canvasGrid,
+			},
+		};
+		data.info.name = node.info.name;
+		// utilsValidateName({
+		// 	text: node.info.name,
+		// 	nodes: Object.values(this.nodes.getNodes())
+		// })
+		const nodeDestiny = this.nodes.addNode(data, isManual);
 
 		if (origin) {
 			this.nodes.getNode({ id: origin.idNode }).addConnection({
 				connectorType: origin.connectorType,
 				connectorName: origin.connectorName,
 				idNodeDestiny: nodeDestiny.id,
-				connectorDestinyType: 'output',
+				connectorDestinyType: "output",
 				connectorDestinyName: nodeDestiny.info.connectors.inputs[0],
-				isManual: true
-			})
+				isManual: true,
+			});
 		}
-		return id
+		return id;
 	}
 
 	/**
@@ -539,7 +599,7 @@ export class Canvas {
 	 */
 	actionDeleteConnectionById({ id }: { id: string }) {
 		for (const node of Object.values(this.nodes.nodes)) {
-			node.deleteConnections({ id })
+			node.deleteConnections({ id });
 		}
 	}
 
@@ -549,12 +609,12 @@ export class Canvas {
 	 */
 	actionTrace(data: {
 		[id: string]: {
-			input: { data: { [key: string]: number }; length: number }
-			output: { data: { [key: string]: number }; length: number }
-			callback: { data: { [key: string]: number }; length: number }
-		}
+			input: { data: { [key: string]: number }; length: number };
+			output: { data: { [key: string]: number }; length: number };
+			callback: { data: { [key: string]: number }; length: number };
+		};
 	}) {
-		this.nodes.trace(data)
+		// this.nodes.trace(data);
 	}
 
 	/**
@@ -563,16 +623,16 @@ export class Canvas {
 	destroy() {
 		for (const event of this.eventsCanvas) {
 			this.canvas.removeEventListener(event as any, (e) => {
-				e.preventDefault()
-				this.events({ event: event as string, e })
-			})
+				e.preventDefault();
+				this.events({ event: event as string, e });
+			});
 		}
-		window.removeEventListener('resize', () => this.eventResize())
-		document.removeEventListener('mouseup', this.eventMouseUp)
-		subscriberHelper().clear()
-		this.eventMouseEnd()
+		window.removeEventListener("resize", () => this.eventResize());
+		document.removeEventListener("mouseup", this.eventMouseUp);
+		subscriberHelper().clear();
+		this.eventMouseEnd();
 		if (this.backgroundUpdateInterval) {
-			clearInterval(this.backgroundUpdateInterval)
+			clearInterval(this.backgroundUpdateInterval);
 		}
 	}
 }

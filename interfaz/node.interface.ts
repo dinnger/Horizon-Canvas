@@ -1,59 +1,59 @@
-import type { INodePropertiesType } from './node.properties.interface.js'
+import type { INodePropertiesType } from "./node.properties.interface.js";
 
 interface Point {
-	x: number
-	y: number
+	x: number;
+	y: number;
 }
 
 interface INodeInfo {
-	name: string
-	desc: string
-	icon: string
-	group: string
-	color: string
-	connectors: INodeConnectors
+	name: string;
+	desc: string;
+	icon: string;
+	group: string;
+	color: string;
+	connectors: INodeConnectors;
 	flags?: {
-		isSingleton?: boolean
-		isTrigger?: boolean
-		isAccessSecrets?: boolean
-	}
+		isSingleton?: boolean;
+		isTrigger?: boolean;
+		isAccessSecrets?: boolean;
+	};
 }
 
 interface IMetaNode {
-	[key: string]: any
+	[key: string]: any;
 }
 
 export interface INodeConnectors {
-	inputs: string[]
-	outputs: string[]
-	callbacks?: string[]
+	inputs: string[] | { name: string; nextNodeTag: string | string[] }[];
+	outputs: string[] | { name: string; nextNodeTag: string | string[] }[];
+	callbacks?: string[] | { name: string; nextNodeTag: string | string[] }[];
 }
 
 export interface INodeConnections {
-	id?: string
-	connectorType: 'input' | 'output' | 'callback'
-	connectorName: string
-	idNodeOrigin?: string
-	idNodeDestiny: string
-	connectorDestinyType: 'input' | 'output' | 'callback' // connector output
-	connectorDestinyName: string // connector input
-	pointers?: Point[]
-	colorGradient?: any
-	isFocused?: boolean
-	isNew?: boolean
+	id?: string;
+	connectorType: "input" | "output" | "callback";
+	connectorName: string;
+	idNodeOrigin?: string;
+	idNodeDestiny: string;
+	connectorDestinyType: "input" | "output" | "callback"; // connector output
+	connectorDestinyName: string; // connector input
+	pointers?: Point[];
+	colorGradient?: any;
+	isFocused?: boolean;
+	isNew?: boolean;
 }
 
 // ============================================================================
 // Node
 // ============================================================================
 export interface INode {
-	id?: string
-	info: INodeInfo
-	dependencies?: string[]
-	properties: INodePropertiesType
-	credentials?: INodePropertiesType
-	meta?: IMetaNode
-	tags?: string[]
+	id?: string;
+	info: INodeInfo;
+	dependencies?: string[];
+	properties: INodePropertiesType;
+	credentials?: INodePropertiesType;
+	meta?: IMetaNode;
+	tags?: string[];
 }
 
 // ============================================================================
@@ -61,7 +61,7 @@ export interface INode {
 // ============================================================================
 
 export interface INodeCanvas extends INode {
-	type: string
-	design: Point & { width?: number; height?: number }
-	connections?: INodeConnections[]
+	type: string;
+	design: Point & { width?: number; height?: number };
+	connections?: INodeConnections[];
 }
