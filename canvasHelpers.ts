@@ -61,6 +61,7 @@ let notificationsList: { [key: string]: any } = {};
 const notificationTTL = (id: string, value: any) => {
 	const now = new Date().getTime();
 	const last = notificationsList[id]?.last || 0;
+	if (!notificationsList[id]) notificationsList[id] = {};
 	if (now - last > 1000) {
 		notificationsList[id].last = now;
 		notificationsList[id].value = value;
@@ -615,11 +616,11 @@ export function renderConnectionNodes({
 			width: nodeDestiny.design.width!,
 			height: nodeDestiny.design.height!,
 		};
-		const indexOutput = nodeOrigin.info.connectors.outputs.indexOf(
-			connection.connectorName,
+		const indexOutput = nodeOrigin.info.connectors.outputs.findIndex(
+			(f) => f.name === connection.connectorName,
 		);
-		const indexInput = nodeDestiny.info.connectors.inputs.indexOf(
-			connection.connectorDestinyName,
+		const indexInput = nodeDestiny.info.connectors.inputs.findIndex(
+			(f) => f.name === connection.connectorDestinyName,
 		);
 
 		connector = OrthogonalConnector.route({

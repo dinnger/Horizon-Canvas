@@ -24,9 +24,9 @@ interface IMetaNode {
 }
 
 export interface INodeConnectors {
-	inputs: string[] | { name: string; nextNodeTag: string | string[] }[];
-	outputs: string[] | { name: string; nextNodeTag: string | string[] }[];
-	callbacks?: string[] | { name: string; nextNodeTag: string | string[] }[];
+	inputs: { name: string; nextNodeTag?: string | string[] }[];
+	outputs: { name: string; nextNodeTag?: string | string[] }[];
+	callbacks?: { name: string; nextNodeTag?: string | string[] }[];
 }
 
 export interface INodeConnections {
@@ -64,4 +64,16 @@ export interface INodeCanvas extends INode {
 	type: string;
 	design: Point & { width?: number; height?: number };
 	connections?: INodeConnections[];
+}
+
+// Información del nodo original al disparar la acción de añadir nodo
+export interface INodeCanvasAdd {
+	design: { x: number; y: number };
+	relativePos: { x: number; y: number };
+	connection: {
+		type: "input" | "output" | "callback";
+		name: string;
+		nextNodeTag?: string | string[];
+	};
+	node: INodeCanvas;
 }

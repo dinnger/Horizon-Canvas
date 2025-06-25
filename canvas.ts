@@ -432,21 +432,21 @@ export class Canvas {
 				x: this.canvasRelativePos.x,
 				y: this.canvasRelativePos.y,
 			});
+			this.newConnectionNode.relative = this.canvasRelativePos;
 
 			if (
 				targetInput &&
-				this.newConnectionNode.type === "output" &&
 				targetInput.node.id !== this.newConnectionNode.node.id
 			) {
 				const originNode = this.nodes.getNode({
 					id: this.newConnectionNode.node.id!,
 				});
 				originNode.addConnection({
-					connectorType: "output",
-					connectorName: this.newConnectionNode.value,
+					connectorType: this.newConnectionNode.type,
+					connectorName: this.newConnectionNode.value.name,
 					idNodeDestiny: targetInput.node.id!,
 					connectorDestinyType: "input",
-					connectorDestinyName: targetInput.connectorName,
+					connectorDestinyName: targetInput.connectorName.name,
 					isManual: true,
 				});
 
@@ -456,13 +456,14 @@ export class Canvas {
 				this.emit("node_added", {
 					design: this.canvasPosition,
 					relativePos: { ...this.canvasRelativePos },
-					connection: this.newConnectionNode.value,
+					connection: {
+						...this.newConnectionNode.value,
+						type: this.newConnectionNode.type,
+					},
 					node: this.newConnectionNode.node,
 				});
+				this.newConnectionNode = null;
 			}
-		}
-		if (this.newConnectionNode) {
-			this.newConnectionNode.relative = this.canvasRelativePos;
 		}
 	}
 
@@ -580,13 +581,14 @@ export class Canvas {
 		// })
 		const nodeDestiny = this.nodes.addNode(data, isManual);
 
+		console.log("origin", origin);
 		if (origin) {
 			this.nodes.getNode({ id: origin.idNode }).addConnection({
 				connectorType: origin.connectorType,
 				connectorName: origin.connectorName,
 				idNodeDestiny: nodeDestiny.id,
 				connectorDestinyType: "output",
-				connectorDestinyName: nodeDestiny.info.connectors.inputs[0],
+				connectorDestinyName: nodeDestiny.info.connectors.inputs[0].name,
 				isManual: true,
 			});
 		}

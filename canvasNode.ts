@@ -1,51 +1,62 @@
-import type { INodeCanvas, INodeConnections } from './interfaz/node.interface'
-import type { INodePropertiesType } from './interfaz/node.properties.interface'
-import type { Point } from './canvasConnector'
-import { addAnimation, render_node, renderConnectionNodes, subscriberHelper } from './canvasHelpers'
-import { ref, watch } from 'vue'
-import { v4 as uuidv4 } from 'uuid'
-import type { Nodes } from './canvasNodes'
+import type { INodeCanvas, INodeConnections } from "./interfaz/node.interface";
+import type { INodePropertiesType } from "./interfaz/node.properties.interface";
+import type { Point } from "./canvasConnector";
+import {
+	addAnimation,
+	render_node,
+	renderConnectionNodes,
+	subscriberHelper,
+} from "./canvasHelpers";
+import { ref, watch } from "vue";
+import { v4 as uuidv4 } from "uuid";
+import type { Nodes } from "./canvasNodes";
 
 export class NewNode {
-	id: string
-	type: string
-	info: INodeCanvas['info']
-	properties: INodePropertiesType
-	oldProperties: INodePropertiesType
-	meta?: INodeCanvas['meta'] | undefined
-	design: INodeCanvas['design']
-	connections: INodeConnections[]
-	relativePos = { x: 0, y: 0 }
-	isSelected = false
-	isMove = false
-	private el: Nodes
-	public isLockedProperty = false
+	id: string;
+	type: string;
+	info: INodeCanvas["info"];
+	properties: INodePropertiesType;
+	oldProperties: INodePropertiesType;
+	meta?: INodeCanvas["meta"] | undefined;
+	design: INodeCanvas["design"];
+	connections: INodeConnections[];
+	relativePos = { x: 0, y: 0 };
+	isSelected = false;
+	isMove = false;
+	private el: Nodes;
+	public isLockedProperty = false;
 	private infoTrace = {
 		inputs: 0,
-		outputs: 0
-	}
+		outputs: 0,
+	};
 
 	constructor(value: INodeCanvas, el: Nodes) {
-		this.el = el
-		this.id = value.id || uuidv4()
-		this.info = value.info
+		this.el = el;
+		this.id = value.id || uuidv4();
+		this.info = value.info;
 		// this.info.name = utilsValidateName({ text: utilsStandardName(value.info.name), nodes: Object.values(this.el.nodes) })
-		this.type = value.type
-		this.properties = value.properties
-		this.oldProperties = JSON.parse(JSON.stringify(value.properties))
-		this.meta = value.meta
-		this.design = ref(value.design).value
-		this.connections = value.connections || []
+		this.type = value.type;
+		this.properties = value.properties;
+		this.oldProperties = JSON.parse(JSON.stringify(value.properties));
+		this.meta = value.meta;
+		this.design = ref(value.design).value;
+		this.connections = value.connections || [];
 
-		this.design.width = value.design.width || 120
-		this.design.height = this.calculateNodeHeight() || 90
-		this.listeners()
+		this.design.width = value.design.width || 120;
+		this.design.height = this.calculateNodeHeight() || 90;
+		this.listeners();
 	}
 
 	private calculateNodeHeight() {
-		const widthByInputs = Math.max(35 + (this.info.connectors?.inputs?.length || 0) * 20, 85)
-		const widthByOutputs = Math.max(35 + (this.info.connectors?.outputs?.length || 0) * 20, 85)
-		return Math.max(widthByInputs, widthByOutputs)
+		const widthByInputs = Math.max(
+			35 + (this.info.connectors?.inputs?.length || 0) * 20,
+			85,
+		);
+		const widthByOutputs = Math.max(
+			35 + (this.info.connectors?.outputs?.length || 0) * 20,
+			85,
+		);
+		return Math.max(widthByInputs, widthByOutputs);
 	}
 
 	private listeners() {
@@ -53,33 +64,36 @@ export class NewNode {
 			this.properties,
 			(newValue) => {
 				if (this.isLockedProperty) {
-					this.oldProperties = JSON.parse(JSON.stringify(newValue))
-					return
+					this.oldProperties = JSON.parse(JSON.stringify(newValue));
+					return;
 				}
 				for (const key in newValue) {
-					if (JSON.stringify(newValue[key]) !== JSON.stringify(this.oldProperties[key])) {
-						subscriberHelper().send('virtualChangeProperties', {
+					if (
+						JSON.stringify(newValue[key]) !==
+						JSON.stringify(this.oldProperties[key])
+					) {
+						subscriberHelper().send("virtualChangeProperties", {
 							node: this.get(),
 							key,
-							value: newValue[key].value
-						})
+							value: newValue[key].value,
+						});
 					}
 				}
-				this.oldProperties = JSON.parse(JSON.stringify(newValue))
+				this.oldProperties = JSON.parse(JSON.stringify(newValue));
 			},
 			{
-				deep: true
-			}
-		)
+				deep: true,
+			},
+		);
 		watch(this.design, (value) => {
-			subscriberHelper().send('virtualChangePosition', {
+			subscriberHelper().send("virtualChangePosition", {
 				node: {
 					id: this.id,
 					x: value.x,
-					y: value.y
-				}
-			})
-		})
+					y: value.y,
+				},
+			});
+		});
 	}
 
 	get() {
@@ -89,8 +103,8 @@ export class NewNode {
 			info: this.info,
 			properties: this.properties,
 			design: this.design,
-			connections: this.connections
-		}
+			connections: this.connections,
+		};
 	}
 
 	// changeName(name: string): boolean {
@@ -104,55 +118,65 @@ export class NewNode {
 
 	addConnection(element: INodeConnections & { isManual?: boolean }) {
 		if (element.idNodeDestiny === this.id) {
-			this.isMove = false
-			this.isSelected = false
-			return this.connections.push(element)
+			this.isMove = false;
+			this.isSelected = false;
+			return this.connections.push(element);
 		}
 
-		let { id, idNodeDestiny } = element
-		id = id || uuidv4()
+		let { id, idNodeDestiny } = element;
+		id = id || uuidv4();
 		const connection = new NewConnector({
 			...element,
-			id
-		})
-		if (!connection.idNodeOrigin) connection.idNodeOrigin = this.id
-		this.connections.push(connection)
+			id,
+		});
+		console.log(connection);
+		if (!connection.idNodeOrigin) connection.idNodeOrigin = this.id;
+		this.connections.push(connection);
 		if (connection.idNodeOrigin === this.id) {
-			this.el.nodes[idNodeDestiny].addConnection(connection)
-			this.isMove = true
+			this.el.nodes[idNodeDestiny].addConnection(connection);
+			this.isMove = true;
 		}
 		if (element.isManual) {
 			const data = {
 				...connection,
-				isManual: undefined
-			}
-			subscriberHelper().send('virtualAddConnection', data)
+				isManual: undefined,
+			};
+			subscriberHelper().send("virtualAddConnection", data);
 		}
 	}
 
 	deleteConnections({ id }: { id?: string }) {
-		subscriberHelper().send('virtualRemoveConnection', { id })
-		this.connections = this.connections.filter((f) => f.id !== id)
+		subscriberHelper().send("virtualRemoveConnection", { id });
+		this.connections = this.connections.filter((f) => f.id !== id);
 	}
 
 	deleteAllConnections({ id }: { id?: string } = {}) {
-		const list = id ? this.connections.filter((f) => f.id === id) : this.connections
+		const list = id
+			? this.connections.filter((f) => f.id === id)
+			: this.connections;
 		for (const connection of list) {
-			if (connection.idNodeOrigin) this.el.nodes[connection.idNodeOrigin].deleteConnections({ id: connection.id })
-			this.el.nodes[connection.idNodeDestiny].deleteConnections({ id: connection.id })
+			if (connection.idNodeOrigin)
+				this.el.nodes[connection.idNodeOrigin].deleteConnections({
+					id: connection.id,
+				});
+			this.el.nodes[connection.idNodeDestiny].deleteConnections({
+				id: connection.id,
+			});
 		}
 	}
 
 	setRelativePos(pos: { x: number; y: number }) {
 		this.relativePos = {
 			x: pos.x - this.design.x,
-			y: pos.y - this.design.y
-		}
+			y: pos.y - this.design.y,
+		};
 	}
 
-	verifySelected({ pos }: { pos?: { x: number; y: number; x2?: number; y2?: number } }) {
-		if (!pos) return null
-		const marginX = 2
+	verifySelected({
+		pos,
+	}: { pos?: { x: number; y: number; x2?: number; y2?: number } }) {
+		if (!pos) return null;
+		const marginX = 2;
 		if (
 			(!pos.x2 &&
 				pos.x >= this.design.x + marginX &&
@@ -166,21 +190,27 @@ export class NewNode {
 				pos.x2 >= this.design.x + this.design.width! &&
 				pos.y2 >= this.design.y + this.design.height!)
 		) {
-			return true
+			return true;
 		}
-		return false
+		return false;
 	}
 
-	setSelected({ pos, relative }: { pos?: { x: number; y: number; x2?: number; y2?: number }; relative: { x: number; y: number } }): {
-		type: 'node' | 'connector'
-		value: any
+	setSelected({
+		pos,
+		relative,
+	}: {
+		pos?: { x: number; y: number; x2?: number; y2?: number };
+		relative: { x: number; y: number };
+	}): {
+		type: "node" | "connector";
+		value: any;
 	} | null {
-		this.isSelected = false
-		this.isMove = false
-		this.relativePos = { x: 0, y: 0 }
-		if (!pos) return null
+		this.isSelected = false;
+		this.isMove = false;
+		this.relativePos = { x: 0, y: 0 };
+		if (!pos) return null;
 
-		const marginX = 2
+		const marginX = 2;
 		if (
 			(!pos.x2 &&
 				pos.x >= this.design.x + marginX &&
@@ -194,23 +224,23 @@ export class NewNode {
 				pos.x2 >= this.design.x + this.design.width! &&
 				pos.y2 >= this.design.y + this.design.height!)
 		) {
-			this.setRelativePos(relative)
-			this.isSelected = true
-			this.isMove = true
-			return { type: 'node', value: this.get() }
+			this.setRelativePos(relative);
+			this.isSelected = true;
+			this.isMove = true;
+			return { type: "node", value: this.get() };
 		}
 
-		const connector = this.getSelectedConnectors({ x: pos.x, y: pos.y })
-		if (!connector) return null
-		return { type: 'connector', value: connector }
+		const connector = this.getSelectedConnectors({ x: pos.x, y: pos.y });
+		if (!connector) return null;
+		return { type: "connector", value: connector };
 	}
 	getSelectedConnectors({ x, y }: { x: number; y: number }): {
-		node: INodeCanvas
-		type: 'output' | 'input' | 'callback'
-		index: number
-		value: any
+		node: INodeCanvas;
+		type: "output" | "input" | "callback";
+		index: number;
+		value: any;
 	} | null {
-		const marginX = 8
+		const marginX = 8;
 
 		// Detectar outputs (lado derecho del nodo)
 		for (const output of Object.keys(this.info.connectors.outputs)) {
@@ -220,9 +250,14 @@ export class NewNode {
 				y >= this.design.y + 25 + Number.parseInt(output) * 20 - 5 &&
 				y <= this.design.y + 25 + Number.parseInt(output) * 20 + 15
 			) {
-				this.isMove = false
-				this.isSelected = true
-				return { node: this.get(), type: 'output', index: Number(output), value: this.info.connectors.outputs[Number(output)] }
+				this.isMove = false;
+				this.isSelected = true;
+				return {
+					node: this.get(),
+					type: "output",
+					index: Number(output),
+					value: this.info.connectors.outputs[Number(output)],
+				};
 			}
 		}
 
@@ -234,118 +269,126 @@ export class NewNode {
 				y >= this.design.y + 25 + Number.parseInt(input) * 20 - 5 &&
 				y <= this.design.y + 25 + Number.parseInt(input) * 20 + 15
 			) {
-				this.isMove = false
-				this.isSelected = true
-				return { node: this.get(), type: 'input', index: Number(input), value: this.info.connectors.inputs[Number(input)] }
+				this.isMove = false;
+				this.isSelected = true;
+				return {
+					node: this.get(),
+					type: "input",
+					index: Number(input),
+					value: this.info.connectors.inputs[Number(input)],
+				};
 			}
 		}
 
-		return null
+		return null;
 	}
 
 	getSelected() {
-		return this.isSelected
+		return this.isSelected;
 	}
 
 	move({ relative }: { relative: { x: number; y: number } }) {
-		if (!this.isMove) return
-		let x = relative.x - this.relativePos.x
-		let y = relative.y - this.relativePos.y
+		if (!this.isMove) return;
+		let x = relative.x - this.relativePos.x;
+		let y = relative.y - this.relativePos.y;
 		// x and y only divisible by 20
-		x = Math.round(x / this.el.canvasGrid) * this.el.canvasGrid
-		y = Math.round(y / this.el.canvasGrid) * this.el.canvasGrid
-		if (x === this.design.x && y === this.design.y) return
+		x = Math.round(x / this.el.canvasGrid) * this.el.canvasGrid;
+		y = Math.round(y / this.el.canvasGrid) * this.el.canvasGrid;
+		if (x === this.design.x && y === this.design.y) return;
 
-		if (this.design.x === x && this.design.y === y) return
-		this.design.x = x
-		this.design.y = y
+		if (this.design.x === x && this.design.y === y) return;
+		this.design.x = x;
+		this.design.y = y;
 
 		for (const connection of this.connections) {
-			connection.pointers = undefined
+			connection.pointers = undefined;
 		}
 	}
 
 	delete() {
-		this.deleteAllConnections()
-		delete this.el.nodes[this.id]
-		this.isSelected = false
-		subscriberHelper().send('virtualRemoveNode', { node: this.get() })
+		this.deleteAllConnections();
+		delete this.el.nodes[this.id];
+		this.isSelected = false;
+		subscriberHelper().send("virtualRemoveNode", { node: this.get() });
 	}
 
 	duplicate() {
-		this.isSelected = false
-		return this.el.duplicateNode({ id: this.id })
+		this.isSelected = false;
+		return this.el.duplicateNode({ id: this.id });
 	}
 
 	duplicateMultiple() {
-		this.el.duplicateMultiple()
+		this.el.duplicateMultiple();
 	}
 
 	trace(data: {
-		input: { data: { [key: string]: number }; length: number }
-		output: { data: { [key: string]: number }; length: number }
-		callback: { data: { [key: string]: number }; length: number }
-		connections: { type: 'input' | 'output' | 'callback'; name: string }[]
+		input: { data: { [key: string]: number }; length: number };
+		output: { data: { [key: string]: number }; length: number };
+		callback: { data: { [key: string]: number }; length: number };
+		connections: { type: "input" | "output" | "callback"; name: string }[];
 	}) {
 		if (this.infoTrace.outputs !== data.output.length && this.el.ctx) {
 			addAnimation({
 				node: this,
-				connections: data.connections
-			})
+				connections: data.connections,
+			});
 		}
-		this.infoTrace.inputs = data.input.length
-		this.infoTrace.outputs = data.output.length
+		this.infoTrace.inputs = data.input.length;
+		this.infoTrace.outputs = data.output.length;
 	}
 
 	render({ ctx }: { ctx: CanvasRenderingContext2D }) {
 		render_node({
 			ctx,
-			theme: 'dark',
+			theme: "dark",
 			node: this,
 			selected: this.isSelected,
-			infoTrace: this.infoTrace
-		})
+			infoTrace: this.infoTrace,
+		});
 	}
 
-	renderConnections({ ctx, nodes }: { ctx: CanvasRenderingContext2D; nodes: { [key: string]: INodeCanvas } }) {
+	renderConnections({
+		ctx,
+		nodes,
+	}: { ctx: CanvasRenderingContext2D; nodes: { [key: string]: INodeCanvas } }) {
 		for (const connection of this.connections) {
-			const nodeOrigin = connection.idNodeOrigin
-			if (nodeOrigin !== this.id) continue
+			const nodeOrigin = connection.idNodeOrigin;
+			if (nodeOrigin !== this.id) continue;
 			renderConnectionNodes({
 				ctx,
 				connection,
-				nodes
-			})
+				nodes,
+			});
 		}
 	}
 }
 
 class NewConnector implements INodeConnections {
-	id: string
-	connectorType: 'input' | 'output' | 'callback'
-	connectorName: string
-	idNodeOrigin?: string
-	idNodeDestiny: string
-	connectorDestinyType: 'input' | 'output' | 'callback' // connector output
-	connectorDestinyName: string // connector input
-	isManual?: boolean
-	pointers?: Point[]
-	colorGradient?: any
-	isFocused?: boolean
-	isNew?: boolean
+	id: string;
+	connectorType: "input" | "output" | "callback";
+	connectorName: string;
+	idNodeOrigin?: string;
+	idNodeDestiny: string;
+	connectorDestinyType: "input" | "output" | "callback"; // connector output
+	connectorDestinyName: string; // connector input
+	isManual?: boolean;
+	pointers?: Point[];
+	colorGradient?: any;
+	isFocused?: boolean;
+	isNew?: boolean;
 	// Si se bloquea la propiedad para evitar redudancia al obtener los cambios
-	isLockedProperty = false
+	isLockedProperty = false;
 	constructor(value: INodeConnections) {
-		this.id = value.id || uuidv4()
-		this.connectorType = value.connectorType
-		this.connectorName = value.connectorName
-		this.idNodeOrigin = value.idNodeOrigin
-		this.idNodeDestiny = value.idNodeDestiny
-		this.connectorDestinyType = value.connectorDestinyType
-		this.connectorDestinyName = value.connectorDestinyName
-		this.pointers = value.pointers
-		this.colorGradient = value.colorGradient
-		this.isFocused = value.isFocused
-		this.isNew = value.isNew
+		this.id = value.id || uuidv4();
+		this.connectorType = value.connectorType;
+		this.connectorName = value.connectorName;
+		this.idNodeOrigin = value.idNodeOrigin;
+		this.idNodeDestiny = value.idNodeDestiny;
+		this.connectorDestinyType = value.connectorDestinyType;
+		this.connectorDestinyName = value.connectorDestinyName;
+		this.pointers = value.pointers;
+		this.colorGradient = value.colorGradient;
+		this.isFocused = value.isFocused;
+		this.isNew = value.isNew;
 	}
 }
