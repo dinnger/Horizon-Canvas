@@ -1,22 +1,31 @@
-import type { INodeCanvas, INodeConnections } from './interfaz/node.interface.js'
-import { v4 as uuidv4 } from 'uuid'
-import { subscriberHelper } from './canvasHelpers'
-import { NewNode } from './canvasNode'
-import { ref } from 'vue'
+import type {
+	INodeCanvas,
+	INodeConnections,
+} from "./interfaz/node.interface.js";
+import { v4 as uuidv4 } from "uuid";
+import { subscriberHelper } from "./canvasHelpers";
+import { NewNode } from "./canvasNode";
+import { ref } from "vue";
 
 /**
  * Gestiona la colección de nodos en el canvas y sus operaciones.
  * Proporciona métodos para crear, modificar, conectar y renderizar nodos.
  */
 export class Nodes {
-	public canvasGrid = 20
-	canvasTranslate: { x: number; y: number }
-	nodes: { [key: string]: NewNode } = {}
-	ctx: CanvasRenderingContext2D | null = null
+	public canvasGrid = 20;
+	canvasTranslate: { x: number; y: number };
+	nodes: { [key: string]: NewNode } = {};
+	ctx: CanvasRenderingContext2D | null = null;
 
-	constructor({ canvasTranslate, ctx }: { canvasTranslate: { x: number; y: number }; ctx: CanvasRenderingContext2D }) {
-		this.canvasTranslate = canvasTranslate
-		this.ctx = ctx
+	constructor({
+		canvasTranslate,
+		ctx,
+	}: {
+		canvasTranslate: { x: number; y: number };
+		ctx: CanvasRenderingContext2D;
+	}) {
+		this.canvasTranslate = canvasTranslate;
+		this.ctx = ctx;
 	}
 
 	/**
@@ -26,9 +35,9 @@ export class Nodes {
 	 * @throws Error si el nodo no existe
 	 */
 	getNode(data: { id: string }) {
-		const node = this.nodes[data.id]
-		if (!node) throw new Error('No se encontró el nodo')
-		return this.nodes[data.id]
+		const node = this.nodes[data.id];
+		if (!node) throw new Error("No se encontró el nodo");
+		return this.nodes[data.id];
 	}
 
 	/**
@@ -38,16 +47,16 @@ export class Nodes {
 	 * @returns El nodo creado
 	 */
 	addNode(node: INodeCanvas, isManual?: boolean) {
-		node.id = node.id || uuidv4()
-		this.nodes[node.id] = new NewNode(node, this)
-		const newNode = this.nodes[node.id]
+		node.id = node.id || uuidv4();
+		this.nodes[node.id] = new NewNode(node, this);
+		const newNode = this.nodes[node.id];
 		if (isManual) {
-			subscriberHelper().send('virtualAddNode', {
+			subscriberHelper().send("virtualAddNode", {
 				node: newNode.get(),
-				isManual
-			})
+				isManual,
+			});
 		}
-		return this.nodes[node.id]
+		return this.nodes[node.id];
 	}
 
 	/**
@@ -56,8 +65,8 @@ export class Nodes {
 	 * @returns El nodo duplicado o undefined si no existe
 	 */
 	duplicateNode({ id }: { id: string }) {
-		const node = this.nodes[id]
-		if (!node) return
+		const node = this.nodes[id];
+		if (!node) return;
 		return this.addNode(
 			{
 				id: undefined,
@@ -66,11 +75,11 @@ export class Nodes {
 				properties: ref(JSON.parse(JSON.stringify(node.properties))).value,
 				design: ref({
 					x: node.design.x + this.canvasGrid * 2,
-					y: node.design.y + this.canvasGrid * 5
-				}).value
+					y: node.design.y + this.canvasGrid * 5,
+				}).value,
 			},
-			true
-		)
+			true,
+		);
 	}
 
 	/**
@@ -78,24 +87,28 @@ export class Nodes {
 	 * Crea copias de los nodos y recrea las conexiones entre ellos.
 	 */
 	duplicateMultiple() {
-		const selectedNodes = this.getSelected()
-		const originalToNewIdMap = new Map<string, string>()
-		const duplicatedNodes: NewNode[] = []
+		const selectedNodes = this.getSelected();
+		const originalToNewIdMap = new Map<string, string>();
+		const duplicatedNodes: NewNode[] = [];
 
 		for (const node of selectedNodes) {
-			const newNode = node.duplicate()
+			const newNode = node.duplicate();
 			if (newNode && node.id) {
-				originalToNewIdMap.set(node.id, newNode.id!)
-				duplicatedNodes.push(newNode)
+				originalToNewIdMap.set(node.id, newNode.id!);
+				duplicatedNodes.push(newNode);
 			}
 		}
 
 		for (const originalNode of selectedNodes) {
-			if (!originalNode.id) continue
+			if (!originalNode.id) continue;
 			for (const connection of originalNode.connections) {
-				if (connection.idNodeOrigin === originalNode.id && connection.idNodeDestiny && originalToNewIdMap.has(connection.idNodeDestiny)) {
-					const newOriginId = originalToNewIdMap.get(originalNode.id)
-					const newDestinyId = originalToNewIdMap.get(connection.idNodeDestiny)
+				if (
+					connection.idNodeOrigin === originalNode.id &&
+					connection.idNodeDestiny &&
+					originalToNewIdMap.has(connection.idNodeDestiny)
+				) {
+					const newOriginId = originalToNewIdMap.get(originalNode.id);
+					const newDestinyId = originalToNewIdMap.get(connection.idNodeDestiny);
 
 					if (newOriginId && newDestinyId) {
 						this.addConnection({
@@ -106,16 +119,16 @@ export class Nodes {
 							idNodeDestiny: newDestinyId,
 							connectorDestinyType: connection.connectorDestinyType,
 							connectorDestinyName: connection.connectorDestinyName,
-							isManual: true
-						})
+							isManual: true,
+						});
 					}
 				}
 			}
 		}
 
 		for (const node of duplicatedNodes) {
-			node.isSelected = true
-			node.isMove = true
+			node.isSelected = true;
+			node.isMove = true;
 		}
 	}
 
@@ -124,10 +137,14 @@ export class Nodes {
 	 * @param connection - Datos de la conexión a crear
 	 */
 	addConnection(connection: INodeConnections & { isManual?: boolean }) {
-		const id = connection.idNodeOrigin || ''
-		if (!this.nodes[id]) return console.error('No se encontró el nodo', id)
-		if (!this.nodes[connection.idNodeDestiny]) return console.error('No se encontró el nodo destino', connection.idNodeDestiny)
-		this.nodes[id].addConnection(connection)
+		const id = connection.idNodeOrigin || "";
+		if (!this.nodes[id]) return console.error("No se encontró el nodo", id);
+		if (!this.nodes[connection.idNodeDestiny])
+			return console.error(
+				"No se encontró el nodo destino",
+				connection.idNodeDestiny,
+			);
+		this.nodes[id].addConnection(connection);
 	}
 
 	/**
@@ -135,7 +152,7 @@ export class Nodes {
 	 * @param id - ID del nodo a eliminar
 	 */
 	removeNode(id: string) {
-		delete this.nodes[id]
+		delete this.nodes[id];
 	}
 
 	/**
@@ -144,36 +161,40 @@ export class Nodes {
 	 * @returns Nueva conexión si se selecciona un conector
 	 */
 	selected({ relative }: { relative: { x: number; y: number } }) {
-		const x = relative.x
-		const y = relative.y
-		const selected = this.getSelected()
-		let newConnection = null
-		let verifyMulti = false
+		const x = relative.x;
+		const y = relative.y;
+		const selected = this.getSelected();
+		let newConnection = null;
+		let verifyMulti = false;
 		for (const node of selected) {
-			if (selected.length > 0 && node.verifySelected({ pos: { x, y } }) && selected.includes(node)) {
-				console.log('selected')
-				verifyMulti = true
+			if (
+				selected.length > 0 &&
+				node.verifySelected({ pos: { x, y } }) &&
+				selected.includes(node)
+			) {
+				console.log("selected");
+				verifyMulti = true;
 			}
 		}
 		if (verifyMulti) {
 			for (const node of selected) {
-				node.setRelativePos(relative)
+				node.setRelativePos(relative);
 			}
-			return
+			return;
 		}
 
 		for (const node of selected) {
-			node.isSelected = false
+			node.isSelected = false;
 		}
 
 		for (const node of Object.values(this.nodes).reverse()) {
-			const select = node.setSelected({ pos: { x, y }, relative })
-			if (select && select.type === 'connector') {
-				newConnection = select.value
+			const select = node.setSelected({ pos: { x, y }, relative });
+			if (select && select.type === "connector") {
+				newConnection = select.value;
 			}
-			if (select) break
+			if (select) break;
 		}
-		return newConnection
+		return newConnection;
 	}
 
 	/**
@@ -181,13 +202,22 @@ export class Nodes {
 	 * @param range - Área de selección definida por dos puntos
 	 * @param relative - Posición relativa del cursor
 	 */
-	selectedMultiple({ range, relative }: { range: { x1: number; y1: number; x2: number; y2: number }; relative: { x: number; y: number } }) {
-		const xMin = Math.min(range.x1, range.x2)
-		const xMax = Math.max(range.x1, range.x2)
-		const yMin = Math.min(range.y1, range.y2)
-		const yMax = Math.max(range.y1, range.y2)
+	selectedMultiple({
+		range,
+		relative,
+	}: {
+		range: { x1: number; y1: number; x2: number; y2: number };
+		relative: { x: number; y: number };
+	}) {
+		const xMin = Math.min(range.x1, range.x2);
+		const xMax = Math.max(range.x1, range.x2);
+		const yMin = Math.min(range.y1, range.y2);
+		const yMax = Math.max(range.y1, range.y2);
 		for (const node of Object.values(this.nodes)) {
-			node.setSelected({ pos: { x: xMin, y: yMin, x2: xMax, y2: yMax }, relative })
+			node.setSelected({
+				pos: { x: xMin, y: yMin, x2: xMax, y2: yMax },
+				relative,
+			});
 		}
 	}
 
@@ -196,7 +226,7 @@ export class Nodes {
 	 * @returns Array de nodos seleccionados
 	 */
 	getSelected() {
-		return Object.values(this.nodes).filter((f) => f.getSelected())
+		return Object.values(this.nodes).filter((f) => f.getSelected());
 	}
 
 	/**
@@ -204,7 +234,7 @@ export class Nodes {
 	 * @returns Objeto con todos los nodos indexados por ID
 	 */
 	getNodes() {
-		return this.nodes
+		return this.nodes;
 	}
 
 	/**
@@ -213,7 +243,7 @@ export class Nodes {
 	 */
 	move({ relative }: { relative: { x: number; y: number } }) {
 		for (const node of this.getSelected()) {
-			this.nodes[node.id || -1].move({ relative })
+			this.nodes[node.id || -1].move({ relative });
 		}
 	}
 
@@ -224,23 +254,23 @@ export class Nodes {
 	 * @returns Información del input encontrado o null si no existe
 	 */
 	getInputAtPosition({ x, y }: { x: number; y: number }): {
-		node: NewNode
-		type: 'input'
-		index: number
-		connectorName: string
+		node: NewNode;
+		type: "input";
+		index: number;
+		connectorName: string;
 	} | null {
 		for (const node of Object.values(this.nodes)) {
-			const connector = node.getSelectedConnectors({ x, y })
-			if (connector && connector.type === 'input') {
+			const connector = node.getSelectedConnectors({ x, y });
+			if (connector && connector.type === "input") {
 				return {
 					node,
-					type: 'input',
+					type: "input",
 					index: connector.index,
-					connectorName: connector.value
-				}
+					connectorName: connector.value,
+				};
 			}
 		}
-		return null
+		return null;
 	}
 
 	/**
@@ -250,44 +280,52 @@ export class Nodes {
 	 * @returns Información de la conexión encontrada o null si no existe
 	 */
 	getConnectionAtPosition({ x, y }: { x: number; y: number }): {
-		connection: INodeConnections
-		nodeOrigin: NewNode
-		nodeDestiny: NewNode
+		connection: INodeConnections;
+		nodeOrigin: NewNode;
+		nodeDestiny: NewNode;
 	} | null {
-		const tolerance = 10
+		const tolerance = 10;
 
 		for (const node of Object.values(this.nodes)) {
 			for (const connection of node.connections) {
-				if (connection.idNodeOrigin !== node.id) continue
+				if (connection.idNodeOrigin !== node.id) continue;
 
-				const nodeDestiny = this.nodes[connection.idNodeDestiny]
-				if (!nodeDestiny) continue
+				const nodeDestiny = this.nodes[connection.idNodeDestiny];
+				if (!nodeDestiny) continue;
 
 				if (connection.pointers && connection.pointers.length > 1) {
 					if (this.isPointNearPath(x, y, connection.pointers, tolerance)) {
 						return {
 							connection,
 							nodeOrigin: node,
-							nodeDestiny
-						}
+							nodeDestiny,
+						};
 					}
 				} else {
-					const originPoint = this.getNodeOutputPosition(node, connection.connectorName)
-					const destinyPoint = this.getNodeInputPosition(nodeDestiny, connection.connectorDestinyName)
+					const originPoint = this.getNodeOutputPosition(
+						node,
+						connection.connectorName,
+					);
+					const destinyPoint = this.getNodeInputPosition(
+						nodeDestiny,
+						connection.connectorDestinyName,
+					);
 
 					if (originPoint && destinyPoint) {
-						if (this.isPointNearLine(x, y, originPoint, destinyPoint, tolerance)) {
+						if (
+							this.isPointNearLine(x, y, originPoint, destinyPoint, tolerance)
+						) {
 							return {
 								connection,
 								nodeOrigin: node,
-								nodeDestiny
-							}
+								nodeDestiny,
+							};
 						}
 					}
 				}
 			}
 		}
-		return null
+		return null;
 	}
 
 	/**
@@ -298,15 +336,20 @@ export class Nodes {
 	 * @param tolerance - Tolerancia en píxeles
 	 * @returns true si el punto está cerca del path
 	 */
-	private isPointNearPath(x: number, y: number, points: { x: number; y: number }[], tolerance: number): boolean {
+	private isPointNearPath(
+		x: number,
+		y: number,
+		points: { x: number; y: number }[],
+		tolerance: number,
+	): boolean {
 		for (let i = 0; i < points.length - 1; i++) {
-			const p1 = points[i]
-			const p2 = points[i + 1]
+			const p1 = points[i];
+			const p2 = points[i + 1];
 			if (this.isPointNearLine(x, y, p1, p2, tolerance)) {
-				return true
+				return true;
 			}
 		}
-		return false
+		return false;
 	}
 
 	/**
@@ -318,38 +361,44 @@ export class Nodes {
 	 * @param tolerance - Tolerancia en píxeles
 	 * @returns true si el punto está cerca de la línea
 	 */
-	private isPointNearLine(x: number, y: number, p1: { x: number; y: number }, p2: { x: number; y: number }, tolerance: number): boolean {
-		const A = x - p1.x
-		const B = y - p1.y
-		const C = p2.x - p1.x
-		const D = p2.y - p1.y
+	private isPointNearLine(
+		x: number,
+		y: number,
+		p1: { x: number; y: number },
+		p2: { x: number; y: number },
+		tolerance: number,
+	): boolean {
+		const A = x - p1.x;
+		const B = y - p1.y;
+		const C = p2.x - p1.x;
+		const D = p2.y - p1.y;
 
-		const dot = A * C + B * D
-		const lenSq = C * C + D * D
+		const dot = A * C + B * D;
+		const lenSq = C * C + D * D;
 
 		if (lenSq === 0) {
-			return Math.sqrt(A * A + B * B) <= tolerance
+			return Math.sqrt(A * A + B * B) <= tolerance;
 		}
 
-		const param = dot / lenSq
+		const param = dot / lenSq;
 
-		let xx: number
-		let yy: number
+		let xx: number;
+		let yy: number;
 
 		if (param < 0) {
-			xx = p1.x
-			yy = p1.y
+			xx = p1.x;
+			yy = p1.y;
 		} else if (param > 1) {
-			xx = p2.x
-			yy = p2.y
+			xx = p2.x;
+			yy = p2.y;
 		} else {
-			xx = p1.x + param * C
-			yy = p1.y + param * D
+			xx = p1.x + param * C;
+			yy = p1.y + param * D;
 		}
 
-		const dx = x - xx
-		const dy = y - yy
-		return Math.sqrt(dx * dx + dy * dy) <= tolerance
+		const dx = x - xx;
+		const dy = y - yy;
+		return Math.sqrt(dx * dx + dy * dy) <= tolerance;
 	}
 
 	/**
@@ -358,16 +407,20 @@ export class Nodes {
 	 * @param outputName - Nombre del conector de salida
 	 * @returns Coordenadas del output o null si no existe
 	 */
-	private getNodeOutputPosition(node: NewNode, outputName: string): { x: number; y: number } | null {
+	private getNodeOutputPosition(
+		node: NewNode,
+		outputName: string,
+	): { x: number; y: number } | null {
 		const outputIndex = Object.keys(node.info.connectors.outputs).findIndex(
-			(key) => node.info.connectors.outputs[Number.parseInt(key)] === outputName
-		)
-		if (outputIndex === -1) return null
+			(key) =>
+				node.info.connectors.outputs[Number.parseInt(key)] === outputName,
+		);
+		if (outputIndex === -1) return null;
 
 		return {
 			x: node.design.x + node.design.width!,
-			y: node.design.y + 25 + outputIndex * 20 + 10
-		}
+			y: node.design.y + 25 + outputIndex * 20 + 10,
+		};
 	}
 
 	/**
@@ -376,25 +429,29 @@ export class Nodes {
 	 * @param inputName - Nombre del conector de entrada
 	 * @returns Coordenadas del input o null si no existe
 	 */
-	private getNodeInputPosition(node: NewNode, inputName: string): { x: number; y: number } | null {
+	private getNodeInputPosition(
+		node: NewNode,
+		inputName: string,
+	): { x: number; y: number } | null {
 		const inputIndex = Object.keys(node.info.connectors.inputs).findIndex(
-			(key) => node.info.connectors.inputs[Number.parseInt(key)] === inputName
-		)
-		if (inputIndex === -1) return null
+			(key) => node.info.connectors.inputs[Number.parseInt(key)] === inputName,
+		);
+		if (inputIndex === -1) return null;
 
 		return {
 			x: node.design.x,
-			y: node.design.y + 25 + inputIndex * 20 + 10
-		}
+			y: node.design.y + 25 + inputIndex * 20 + 10,
+		};
 	}
 
 	/**
-	 * Deselecciona todos los nodos del canvas.
+	 * Limpia todos los nodos del canvas.
 	 */
 	clear() {
 		for (const node of Object.values(this.nodes)) {
-			node.setSelected({ relative: { x: 0, y: 0 } })
+			node.clear();
 		}
+		this.nodes = {};
 	}
 
 	/**
@@ -403,10 +460,10 @@ export class Nodes {
 	 */
 	render({ ctx }: { ctx: CanvasRenderingContext2D }) {
 		for (const node of Object.values(this.nodes)) {
-			node.renderConnections({ ctx, nodes: this.nodes })
-			node.render({ ctx })
+			node.renderConnections({ ctx, nodes: this.nodes });
+			node.render({ ctx });
 		}
 	}
 }
 
-export type ICanvasNodeNew = NewNode
+export type ICanvasNodeNew = NewNode;

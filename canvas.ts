@@ -90,7 +90,10 @@ export class Canvas {
 
 	isDragging = false;
 
-	subscribers = new Map<EventsCanvas | EventsCanvas[], (e: any) => any>();
+	subscribers: {
+		event: EventsCanvas | EventsCanvas[];
+		callback: (e: any) => any;
+	}[] = [];
 
 	constructor({
 		canvas,
@@ -176,8 +179,11 @@ export class Canvas {
 	private emit = (event: EventsCanvas | EventsCanvas[], e: any) => {
 		const events = !Array.isArray(event) ? [event] : event;
 		for (const event of events) {
-			const callback = this.subscribers.get(event);
-			if (callback) callback(e);
+			for (const subscriber of this.subscribers.filter(
+				(f) => f.event === event,
+			)) {
+				if (subscriber.callback) subscriber.callback(e);
+			}
 		}
 	};
 
@@ -263,7 +269,7 @@ export class Canvas {
 			}
 			return;
 		}
-		this.subscribers.set(event, callback);
+		this.subscribers.push({ event, callback });
 	};
 
 	/**
@@ -617,6 +623,50 @@ export class Canvas {
 		};
 	}) {
 		// this.nodes.trace(data);
+	}
+
+	/**
+	 * Get the current workflow data.
+	 * @returns A workflow data object with nodes and connections.
+	 */
+	getWorkflowData() {
+		const nodes = this.nodes.getNodes();
+		const connections: INodeConnections[] = [];
+		const plainNodes: { [key: string]: INodeCanvas } = {};
+		for (const node of Object.values(nodes)) {
+			plainNodes[node.id] = node.get();
+			if (node.connections) {
+				for (const conn of node.connections) {
+					if (conn.idNodeOrigin === node.id) {
+						connections.push({
+							...conn,
+							colorGradient: null,
+							pointers: undefined,
+						});
+					}
+				}
+			}
+			plainNodes[node.id].connections = [];
+		}
+		console.log({ plainNodes });
+		return { nodes: plainNodes, connections };
+	}
+
+	/**
+	 * Carga datos de workflow en el canvas, limpiando el contenido actual.
+	 * @param data - Nodos y conexiones a cargar.
+	 */
+	loadWorkflowData(data: {
+		nodes: { [key: string]: INodeCanvas };
+		connections: INodeConnections[];
+	}) {
+		// Limpiar nodos existentes
+		this.nodes.clear();
+		this.selectedNode = [];
+		this.newConnectionNode = null;
+
+		// Cargar nuevos datos
+		this.load(JSON.parse(JSON.stringify(data)));
 	}
 
 	/**

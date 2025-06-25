@@ -116,7 +116,7 @@ export class NewNode {
 	// 	return true
 	// }
 
-	addConnection(element: INodeConnections & { isManual?: boolean }) {
+	addConnection(element: INodeConnections) {
 		if (element.idNodeDestiny === this.id) {
 			this.isMove = false;
 			this.isSelected = false;
@@ -129,19 +129,11 @@ export class NewNode {
 			...element,
 			id,
 		});
-		console.log(connection);
 		if (!connection.idNodeOrigin) connection.idNodeOrigin = this.id;
 		this.connections.push(connection);
 		if (connection.idNodeOrigin === this.id) {
 			this.el.nodes[idNodeDestiny].addConnection(connection);
 			this.isMove = true;
-		}
-		if (element.isManual) {
-			const data = {
-				...connection,
-				isManual: undefined,
-			};
-			subscriberHelper().send("virtualAddConnection", data);
 		}
 	}
 
@@ -360,6 +352,13 @@ export class NewNode {
 				nodes,
 			});
 		}
+	}
+
+	/**
+	 * Limpia todos los datos del nodo.
+	 */
+	clear() {
+		this.connections = [];
 	}
 }
 
