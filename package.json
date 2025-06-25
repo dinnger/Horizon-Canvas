@@ -1,5 +1,5 @@
 {
-  "name": "canvas",
+  "name": "horizon-canvas",
   "version": "1.0.0",
   "description": "Canvas del cliente",
   "main": "index.js",
