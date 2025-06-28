@@ -599,7 +599,7 @@ export class Canvas {
 	 * Get the current workflow data.
 	 * @returns A workflow data object with nodes and connections.
 	 */
-	getWorkflowData() {
+	getWorkflowData(): { nodes: { [key: string]: INodeCanvas }; connections: INodeConnections[] } {
 		const nodes = this.nodes.getNodes()
 		const connections: INodeConnections[] = []
 		const plainNodes: { [key: string]: INodeCanvas } = {}
