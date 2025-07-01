@@ -20,6 +20,7 @@ export interface ILog {
 
 type EventsCanvas =
 	| 'node_context'
+	| 'node_dbclick'
 	| 'node_selected'
 	| 'node_deselected'
 	| 'node_moved'
@@ -362,7 +363,7 @@ export class Canvas {
 	 */
 	private eventDbClick = (_e: MouseEvent) => {
 		const selected = this.nodes.getSelected()
-		this.emit('node_selected', { selected })
+		this.emit('node_dbclick', selected)
 	}
 
 	/**
