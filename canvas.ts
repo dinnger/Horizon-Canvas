@@ -2,14 +2,7 @@ import './style/style.css'
 import '@fontsource-variable/comfortaa'
 import type { ICommunicationTypes } from './interfaz/connect.interface.js'
 import type { INodeCanvas, INodeConnections } from './interfaz/node.interface.js'
-import {
-	drawNodeConnectionPreview,
-	renderSelected,
-	getTempConnection,
-	subscriberHelper,
-	setIndexTime,
-	renderAnimation
-} from './canvasHelpers'
+import { drawNodeConnectionPreview, renderSelected, getTempConnection, setIndexTime, renderAnimation } from './canvasHelpers'
 import { pattern_dark, pattern_light } from './canvasPattern'
 import { v4 as uuidv4 } from 'uuid'
 import { Nodes, type ICanvasNodeNew } from './canvasNodes'
@@ -26,6 +19,7 @@ type EventsCanvas =
 	| 'node_moved'
 	| 'node_added'
 	| 'node_removed'
+	| 'node_update_properties'
 	| 'node_connection_selected'
 	| 'node_connection_context'
 	| 'mouse_move'
@@ -387,7 +381,7 @@ export class Canvas {
 
 		if (connectionAtPosition) {
 			this.emit('node_connection_context', {
-				id: connectionAtPosition.connection.id!,
+				id: connectionAtPosition.connection.id,
 				nodeOrigin: connectionAtPosition.nodeOrigin.get(),
 				nodeDestiny: connectionAtPosition.nodeDestiny.get(),
 				input: connectionAtPosition.connection.connectorDestinyName,
@@ -419,15 +413,14 @@ export class Canvas {
 
 			if (targetInput && targetInput.node.id !== this.newConnectionNode.node.id) {
 				const originNode = this.nodes.getNode({
-					id: this.newConnectionNode.node.id!
+					id: this.newConnectionNode.node.id
 				})
 				originNode.addConnection({
 					connectorType: this.newConnectionNode.type,
 					connectorName: this.newConnectionNode.value.name,
 					idNodeDestiny: targetInput.node.id!,
 					connectorDestinyType: 'input',
-					connectorDestinyName: targetInput.connectorName.name,
-					isManual: true
+					connectorDestinyName: targetInput.connectorName.name
 				})
 
 				this.newConnectionNode = null
@@ -481,24 +474,6 @@ export class Canvas {
 		this.eventZoom({ value: deltaY > 0 ? -0.1 : 0.1 })
 		this.canvasTranslate.x -= this.canvasRelativePos.x * (this.canvasFactor - tempFactor)
 		this.canvasTranslate.y -= this.canvasRelativePos.y * (this.canvasFactor - tempFactor)
-	}
-
-	/**
-	 * Suscribe a eventos de comunicación externa.
-	 * @param type - Tipo o tipos de comunicación
-	 * @param fn - Función callback para manejar eventos
-	 */
-	actionSubscriber(
-		type: ICommunicationTypes | ICommunicationTypes[],
-		fn: ({ event, data }: { event: ICommunicationTypes; data: any }) => void
-	) {
-		if (Array.isArray(type)) {
-			for (const t of type) {
-				subscriberHelper().subscriber(t, fn)
-			}
-		} else {
-			subscriberHelper().subscriber(type, fn)
-		}
 	}
 
 	/**
@@ -613,6 +588,19 @@ export class Canvas {
 	}
 
 	/**
+	 * Actualiza las propiedades de un nodo específico.
+	 * @param id - ID del nodo a actualizar
+	 * @param properties - Nuevas propiedades del nodo
+	 */
+	actionUpdateNodeProperties({ id, properties }: { id: string; properties: any }) {
+		const node = this.nodes.getNode({ id })
+		if (node) {
+			node.properties = properties
+			this.emit('node_update_properties', node)
+		}
+	}
+
+	/**
 	 * Procesa datos de trazado de ejecución de nodos.
 	 * @param data - Datos de entrada y salida de cada nodo
 	 */
@@ -685,7 +673,6 @@ export class Canvas {
 		}
 		window.removeEventListener('resize', () => this.eventResize())
 		document.removeEventListener('mouseup', this.eventMouseUp)
-		subscriberHelper().clear()
 		this.eventMouseEnd()
 		if (this.backgroundUpdateInterval) {
 			clearInterval(this.backgroundUpdateInterval)

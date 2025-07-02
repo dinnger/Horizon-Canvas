@@ -1,8 +1,8 @@
 import type { INodeCanvas, INodeConnections } from './interfaz/node.interface'
 import type { INodePropertiesType } from './interfaz/node.properties.interface'
 import type { Point } from './canvasConnector'
-import { addAnimation, render_node, renderConnectionNodes, subscriberHelper } from './canvasHelpers'
-import { ref, watch } from 'vue'
+import { addAnimation, render_node, renderConnectionNodes } from './canvasHelpers'
+import { ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import type { Nodes } from './canvasNodes'
 
@@ -13,7 +13,7 @@ export class NewNode {
 	properties: INodePropertiesType
 	oldProperties: INodePropertiesType
 	meta?: INodeCanvas['meta'] | undefined
-	design: INodeCanvas['design']
+	design: Required<INodeCanvas['design']>
 	connections: INodeConnections[]
 	relativePos = { x: 0, y: 0 }
 	isSelected = false
@@ -34,52 +34,17 @@ export class NewNode {
 		this.properties = value.properties
 		this.oldProperties = JSON.parse(JSON.stringify(value.properties))
 		this.meta = value.meta
-		this.design = ref(value.design).value
+		this.design = ref(value.design).value as any
 		this.connections = value.connections || []
 
 		this.design.width = value.design.width || 120
 		this.design.height = this.calculateNodeHeight() || 90
-		this.listeners()
 	}
 
 	private calculateNodeHeight() {
 		const widthByInputs = Math.max(35 + (this.info.connectors?.inputs?.length || 0) * 20, 85)
 		const widthByOutputs = Math.max(35 + (this.info.connectors?.outputs?.length || 0) * 20, 85)
 		return Math.max(widthByInputs, widthByOutputs)
-	}
-
-	private listeners() {
-		watch(
-			this.properties,
-			(newValue) => {
-				if (this.isLockedProperty) {
-					this.oldProperties = JSON.parse(JSON.stringify(newValue))
-					return
-				}
-				for (const key in newValue) {
-					if (JSON.stringify(newValue[key]) !== JSON.stringify(this.oldProperties[key])) {
-						subscriberHelper().send('virtualChangeProperties', {
-							node: this.get(),
-							key,
-							value: newValue[key].value
-						})
-					}
-				}
-				this.oldProperties = JSON.parse(JSON.stringify(newValue))
-			},
-			{
-				deep: true
-			}
-		)
-		watch(this.design, (value) => {
-			subscriberHelper().send('virtualChangePosition', {
-				node: {
-					id: this.id,
-					x: value.x,
-					y: value.y
-				}
-			})
-		})
 	}
 
 	get() {
@@ -124,7 +89,6 @@ export class NewNode {
 	}
 
 	deleteConnections({ id }: { id?: string }) {
-		subscriberHelper().send('virtualRemoveConnection', { id })
 		this.connections = this.connections.filter((f) => f.id !== id)
 	}
 
@@ -154,15 +118,15 @@ export class NewNode {
 		if (
 			(!pos.x2 &&
 				pos.x >= this.design.x + marginX &&
-				pos.x <= this.design.x + this.design.width! - marginX &&
+				pos.x <= this.design.x + this.design.width - marginX &&
 				pos.y >= this.design.y &&
-				pos.y <= this.design.y + this.design.height!) ||
+				pos.y <= this.design.y + this.design.height) ||
 			(pos.x2 &&
 				pos.y2 &&
 				pos.x <= this.design.x &&
 				pos.y <= this.design.y &&
-				pos.x2 >= this.design.x + this.design.width! &&
-				pos.y2 >= this.design.y + this.design.height!)
+				pos.x2 >= this.design.x + this.design.width &&
+				pos.y2 >= this.design.y + this.design.height)
 		) {
 			return true
 		}
@@ -188,15 +152,15 @@ export class NewNode {
 		if (
 			(!pos.x2 &&
 				pos.x >= this.design.x + marginX &&
-				pos.x <= this.design.x + this.design.width! - marginX &&
+				pos.x <= this.design.x + this.design.width - marginX &&
 				pos.y >= this.design.y &&
-				pos.y <= this.design.y + this.design.height!) ||
+				pos.y <= this.design.y + this.design.height) ||
 			(pos.x2 &&
 				pos.y2 &&
 				pos.x <= this.design.x &&
 				pos.y <= this.design.y &&
-				pos.x2 >= this.design.x + this.design.width! &&
-				pos.y2 >= this.design.y + this.design.height!)
+				pos.x2 >= this.design.x + this.design.width &&
+				pos.y2 >= this.design.y + this.design.height)
 		) {
 			this.setRelativePos(relative)
 			this.isSelected = true
@@ -219,8 +183,8 @@ export class NewNode {
 		// Detectar outputs (lado derecho del nodo)
 		for (const output of Object.keys(this.info.connectors.outputs)) {
 			if (
-				x <= this.design.x + this.design.width! + marginX &&
-				x >= this.design.x + this.design.width! &&
+				x <= this.design.x + this.design.width + marginX &&
+				x >= this.design.x + this.design.width &&
 				y >= this.design.y + 25 + Number.parseInt(output) * 20 - 5 &&
 				y <= this.design.y + 25 + Number.parseInt(output) * 20 + 15
 			) {
@@ -283,7 +247,6 @@ export class NewNode {
 		this.deleteAllConnections()
 		delete this.el.nodes[this.id]
 		this.isSelected = false
-		subscriberHelper().send('virtualRemoveNode', { node: this.get() })
 	}
 
 	duplicate() {

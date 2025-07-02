@@ -1,6 +1,5 @@
 import type { INodeCanvas, INodeConnections } from './interfaz/node.interface.js'
 import { v4 as uuidv4 } from 'uuid'
-import { subscriberHelper } from './canvasHelpers'
 import { NewNode } from './canvasNode'
 import { ref } from 'vue'
 
@@ -47,12 +46,6 @@ export class Nodes {
 		node.id = node.id || uuidv4()
 		this.nodes[node.id] = new NewNode(node, this)
 		const newNode = this.nodes[node.id]
-		if (isManual) {
-			subscriberHelper().send('virtualAddNode', {
-				node: newNode.get(),
-				isManual
-			})
-		}
 		return this.nodes[node.id]
 	}
 
