@@ -531,8 +531,7 @@ export class Canvas {
 	 */
 	actionAddNode({
 		origin,
-		node,
-		isManual
+		node
 	}: {
 		origin?: {
 			idNode: string
@@ -540,7 +539,6 @@ export class Canvas {
 			connectorName: string
 		}
 		node: INodeCanvas
-		isManual?: boolean
 	}) {
 		const id = uuidv4()
 		this.newConnectionNode = null
@@ -557,7 +555,7 @@ export class Canvas {
 		// 	text: node.info.name,
 		// 	nodes: Object.values(this.nodes.getNodes())
 		// })
-		const nodeDestiny = this.nodes.addNode(data, isManual)
+		const nodeDestiny = this.nodes.addNode(data)
 
 		console.log('origin', origin)
 		if (origin) {
@@ -566,8 +564,7 @@ export class Canvas {
 				connectorName: origin.connectorName,
 				idNodeDestiny: nodeDestiny.id,
 				connectorDestinyType: 'output',
-				connectorDestinyName: nodeDestiny.info.connectors.inputs[0].name,
-				isManual: true
+				connectorDestinyName: nodeDestiny.info.connectors.inputs[0].name
 			})
 		}
 		return id
@@ -638,7 +635,11 @@ export class Canvas {
 		const connections: INodeConnections[] = []
 		const plainNodes: { [key: string]: INodeCanvas } = {}
 		for (const node of Object.values(nodes)) {
-			plainNodes[node.id] = node.get()
+			plainNodes[node.id] = JSON.parse(JSON.stringify(node.get()))
+			// Extraer solo los value de las propiedades
+			for (const [key, value] of Object.entries(plainNodes[node.id].properties)) {
+				;(plainNodes[node.id].properties[key] as any) = { value: value.value }
+			}
 			if (node.connections) {
 				for (const conn of node.connections) {
 					if (conn.idNodeOrigin === node.id) {
