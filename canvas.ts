@@ -27,6 +27,7 @@ type EventsCanvas =
 	| 'node_added'
 	| 'node_removed'
 	| 'node_connection_selected'
+	| 'node_connection_context'
 	| 'mouse_move'
 	| 'zoom'
 	| 'clear'
@@ -385,7 +386,7 @@ export class Canvas {
 		})
 
 		if (connectionAtPosition) {
-			this.emit('node_connection_selected', {
+			this.emit('node_connection_context', {
 				id: connectionAtPosition.connection.id!,
 				nodeOrigin: connectionAtPosition.nodeOrigin.get(),
 				nodeDestiny: connectionAtPosition.nodeDestiny.get(),
@@ -579,6 +580,38 @@ export class Canvas {
 	actionDeleteConnectionById({ id }: { id: string }) {
 		for (const node of Object.values(this.nodes.nodes)) {
 			node.deleteConnections({ id })
+		}
+	}
+
+	/**
+	 * Elimina nodos específicos por sus IDs.
+	 * @param ids - Array de IDs de nodos a eliminar
+	 */
+	actionDeleteNodes({ ids }: { ids: string[] }) {
+		for (const id of ids) {
+			// Obtener el nodo antes de eliminarlo
+			const nodeToDelete = this.nodes.getNode({ id })
+			if (nodeToDelete) {
+				// Eliminar todas las conexiones del nodo
+				nodeToDelete.deleteAllConnections()
+			}
+			// Luego eliminar el nodo
+			this.nodes.removeNode(id)
+		}
+		// Limpiar selección si algún nodo seleccionado fue eliminado
+		this.selectedNode = this.selectedNode.filter((node) => !ids.includes(node.id))
+		this.emit('node_removed', { ids })
+	}
+
+	/**
+	 * Actualiza el nombre de un nodo específico.
+	 * @param id - ID del nodo a actualizar
+	 * @param newName - Nuevo nombre para el nodo
+	 */
+	actionUpdateNodeName({ id, newName }: { id: string; newName: string }) {
+		const node = this.nodes.getNode({ id })
+		if (node) {
+			node.get().info.name = newName
 		}
 	}
 
